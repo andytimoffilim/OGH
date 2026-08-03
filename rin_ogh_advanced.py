@@ -3,7 +3,7 @@ rin_ogh_advanced.py - RIN-OGH: Enhanced OGH for Residue Interaction Networks
 
 Authors: Timofeev A.V., Anufriev A.S.
 Organization: AI Center for SCO+ Countries, St. Petersburg, Russia
-Date: 2024
+Date: 2026
 License: MIT
 
 Description:

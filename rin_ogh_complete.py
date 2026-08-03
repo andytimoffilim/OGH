@@ -1,5 +1,5 @@
 """
-rin_ogh_complete.py - Полный анализ RIN-OGH: визуализация, оптимизация, сравнение
+rin_ogh_complete.py - Complete RIN-OGH Analysis: Visualization, Optimization, Comparison
 """
 
 import numpy as np

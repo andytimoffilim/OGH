@@ -174,6 +174,13 @@ fig9_monotonic_alignment.png — monotonic alignment visualization
 
 fig10_vad_length_effect.png — VAD length distribution
 
+### 5. Publication-Ready Figures
+
+Generate the three final figures used in the article:
+
+```bash
+python generate_figures.py
+
 📈 Reproducing Paper Results
 Table 2 (Sensitivity to shuffling)
 python
