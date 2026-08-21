@@ -5,6 +5,8 @@
 
 This repository contains the implementation of the **Ordered Gromov-Hausdorff (OGH)** metric for comparing 3D protein structures with respect to amino acid residue order. The metric penalizes residue rearrangements while preserving sensitivity to geometric shape.
 
+**OGH is not a replacement for TM-score, but a complementary tool** that provides unique discriminatory information precisely where TM-score is weakest: in the diverse structural zone (TM ≤ 0.3) and for proteins with substantial length differences.
+
 ---
 
 ## 📚 About the Research
@@ -13,51 +15,69 @@ Traditional metrics like RMSD and TM-score ignore the linear order of residues a
 
 - **Geometric component**: Euclidean distances between Cα atoms after normalization
 - **Order component**: Exponential penalty for order violations
-- **Monotonic alignment**: Greedy/DP path finding that preserves sequential order
+- **Monotonic alignment**: Greedy path finding that preserves sequential order
 
-The method was validated on the **VAD (Viral Affinity Dataset)** containing 28 viral proteins from HIV-1, SARS-CoV-2, and MERS-CoV.
+### Key Results (SCOP/ASTRAL Benchmark, 1,400 pairs)
 
-### Key Results
-
-- OGH monotonically increases with shuffling degree (0 → 0.065)
-- Positive correlation with TM-score (r = 0.438) — complementary property
-- High correlation with GH approximations (r = 0.745–0.861)
-- Optimal order weight α = 0.5–0.7 for balanced comparison
+| Metric | Value |
+|--------|-------|
+| **OGH AUC (Overall)** | 0.665 |
+| **TM-score AUC (Overall)** | 0.653 |
+| **Combined AUC (Overall)** | **0.731** |
+| **OGH AUC (Diverse zone, TM ≤ 0.3)** | 0.587 |
+| **TM-score AUC (Diverse zone)** | 0.397 |
+| **Improvement in Diverse zone** | **+0.190** |
+| **OGH AUC (Length ratio > 2.5)** | 0.677 |
+| **TM-score AUC (Length ratio > 2.5)** | 0.369 |
+| **Improvement for length ratio > 2.5** | **+0.308** |
 
 ---
 
 ## 📁 Repository Structure
-ogh_reproducibility/
+ogh-reproducibility/
 │
-├── data/ # PDB files (not included)
-│ └── vad_500mb/ # VAD dataset structures
-│ ├── 1E0J.pdb
-│ ├── 1F5K.pdb
-│ └── ...
+├── data/ # PDB files (downloaded automatically)
+│ └── pdb_scop/ # SCOP/ASTRAL PDB structures
 │
 ├── src/ # Source code
-│ ├── ogh_VAD_clean.py # Basic OGH implementation
-│ ├── ogh_VAD_advanced.py # α-sensitivity & method comparison
-│ └── rin_ogh_advanced.py # RIN-OGH with weighted edges
-│
-├── visualization/ # Visualization scripts
-│ ├── visualize_ogh_vs_gh.py # 6 figures: GH vs OGH
-│ ├── visualize_ogh_simple.py # 2 figures: simple illustration
-│ └── visualize_ogh_different_sizes.py # 4 figures: size effects
-│
-├── docs/ # Documentation
-│ ├── NN_OGH_without_therem.pdf # Full paper (Russian/English)
-│ └── Math_OGH.pdf # Mathematical proofs
+│ ├── parse_homologs.py # Extract sequences from Supplementary Material S1.pdf
+│ ├── clean_database.py # Clean and curate the homologs database
+│ ├── homology_validation_real_ogh_v2_eng.p.py # MAIN: ROC/AUC validation (1,400 pairs)
+│ ├── parameter_sensitivity_analysis_new.py # Sensitivity: w, γ, α
+│ ├── compute_all_metrics_scop.py # ALL metrics for Tables 2 & 3
+│ ├── generate_figures_v2.py # Generate all figures
+│ ├── generate_final_tables.py # Compile final tables
+│ ├── generate_supplementary_table_s2.py # Supplementary Table S2
+│ ├── homology_validation_length_ratio.py # Length-ratio analysis (Table 7)
+│ └── optimize_combined_model.py # Optimize OGH + TM-score combination
 │
 ├── results/ # Output (generated)
-│ ├── vad_ogh_results.csv
-│ ├── alpha_sensitivity.png
-│ └── ...
+│ ├── homology_real_ogh_results.csv
+│ ├── zone_auc_results.csv
+│ ├── sensitivity_analysis.csv
+│ ├── shuffling_results.csv
+│ ├── table2_scop.csv
+│ ├── table3_scop.csv
+│ └── combined_optimization_results.csv
 │
-├── requirements.txt # Python dependencies
-├── setup.py # Package installation
-└── README.md # This file
+├── tables/ # Final tables for manuscript
+│ ├── table_3_stratified_auc.csv
+│ ├── table_4_alpha_optimization.csv
+│ ├── table_5_alpha_validation.csv
+│ ├── supplementary_table_s3_*.csv
+│ └── all_tables.tex
+│
+├── figures/ # Publication figures
+│ ├── fig1_ogh_shuffling.png
+│ ├── fig2_ogh_concept.png
+│ ├── fig3_ogh_vs_tm_scatter.png
+│ └── combined_optimization_plot.png
+│
+├── LICENSE
+├── README.md
+└── requirements.txt
 
+text
 
 ---
 
@@ -66,14 +86,14 @@ ogh_reproducibility/
 ### Prerequisites
 
 - Python 3.8 or higher
-- PDB files from VAD dataset (see [Data](#-data) section)
+- Internet connection (for downloading PDB files from RCSB)
 
 ### Steps
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/ogh-reproducibility.git
-cd ogh-reproducibility
+git clone https://github.com/andytimoffilim/OGH.git
+cd OGH
 
 # Create virtual environment (recommended)
 python -m venv venv
@@ -81,182 +101,129 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Install package in development mode
-pip install -e .
 Dependencies
-
+text
 numpy>=1.21.0
 scipy>=1.7.0
 pandas>=1.3.0
+scikit-learn>=1.0.0
 biopython>=1.79
-matplotlib>=3.4.0     # for visualization
-networkx>=2.6.0       # for RIN visualization (optional)
+matplotlib>=3.4.0
+requests>=2.25.0
+openpyxl>=3.0.0
 📊 Data
-VAD Dataset (Viral Affinity Dataset)
-The dataset includes 28 high-quality X-ray structures of viral proteins:
+SCOP/ASTRAL Dataset
+The validation dataset is derived from the SCOP/ASTRAL database (http://astral.berkeley.edu/):
 
-Virus	Proteins	PDB IDs
-HIV-1	Protease, Integrase, Reverse transcriptase	1E0J, 1F5K, 1K28, 2WR7, 3HMX, 4N5J, 4ZMJ, 5KOK, 6E6J, 6NUS, 6QJ4, 6VXX, 6W01, 6WAQ, 6Y2E
-SARS-CoV-2	Main protease (Mpro), RBD	5T6T, 6LU7, 6M0J, 7BW4, 7KRS, 7L0E, 7N0S, 7RBY, 7T83, 7T9N
-SARS-CoV	Protease	6M17
-MERS-CoV	Protease	2H2C, 6B8V
-Download instructions:
+Property	Value
+Total protein chains	4,146
+Protein pairs	1,400 (700 homologous + 700 non-homologous)
+SCOP families	40
+Length range	10–500 residues
+Input Files Required
+File	Description	Source
+Supplementary Material S1.pdf	FASTA-like sequences with SCOP annotations	Provided separately
+homologs_database_clean.csv	Curated database (generated by Step 1)	Generated
+PDB Files
+PDB files are automatically downloaded from RCSB (https://files.rcsb.org/) during script execution. No manual download is required.
 
+🏃 Running the Pipeline
+Complete Pipeline (All Steps)
 bash
-# Create data directory
-mkdir -p data/vad_500mb
+# Step 1: Parse and clean data
+python src/parse_homologs.py
+python src/clean_database.py
 
-# Download PDB files (example with wget)
-cd data/vad_500mb
-for pdb in 1E0J 1F5K 1K28 2H2C 2WR7 3HMX 4N5J 4ZMJ 5KOK 5T6T 6B8V 6E6J 6LU7 6M0J 6M17 6NUS 6QJ4 6VXX 6W01 6WAQ 6Y2E 7BW4 7KRS 7L0E 7N0S 7RBY 7T83 7T9N; do
-    wget https://files.rcsb.org/download/${pdb}.pdb
-done
-🏃 Running the Code
-1. Basic OGH Analysis (Main Results)
-bash
-python src/ogh_VAD_clean.py
-Output:
+# Step 2: Main validation (LONGEST STEP — downloads PDB files, computes OGH for 1,400 pairs)
+python src/homology_validation_real_ogh_v2_eng.p.py
 
-vad_ogh_results.csv — all metrics for each protein pair
+# Step 3: Parameter sensitivity analysis
+python src/parameter_sensitivity_analysis_new.py
 
-vad_ogh_sensitivity.csv — shuffling sensitivity test
+# Step 4: Shuffling test (Table 1, Figure 1)
+python src/generate_figures_v2.py
 
-Console output with statistics and top/bottom pairs
+# Step 5: All metrics for Tables 2 & 3
+python src/compute_all_metrics_scop.py
 
-2. Advanced Analysis (α Optimization & Method Comparison)
-bash
-python src/ogh_VAD_advanced.py
-Output:
+# Step 6: Generate final tables
+python src/generate_final_tables.py
 
-alpha_sensitivity.csv — correlation vs α
+# Step 7: Generate all figures
+python src/generate_figures_v2.py
 
-ordered_methods_comparison.csv — comparison with CE, MATRAS, SALIGN
+# Step 8: Supplementary tables
+python src/generate_supplementary_table_s2.py
 
-statistical_significance.csv — p-values and bootstrap CIs
+# Step 9: Length-ratio analysis (Table 7)
+python src/homology_validation_length_ratio.py
 
-PNG plots (if matplotlib available)
-
-3. RIN-OGH (Residue Interaction Networks)
-bash
-python src/rin_ogh_advanced.py
-Output:
-
-rin_graph_stats.png — graph statistics visualization
-
-Console output with comparison of binary vs weighted edges
-
-4. Visualization
-bash
-# Generate all 12 figures from the paper
-python visualization/visualize_ogh_vs_gh.py
-python visualization/visualize_ogh_simple.py
-python visualization/visualize_ogh_different_sizes.py
-Generated figures:
-
-fig1_gh_concept.png — GH metric concept
-
-fig2_gh_problem.png — GH limitations (order blindness)
-
-fig3_ogh_how_it_works.png — how OGH works
-
-fig4_gh_vs_ogh_comparison.png — GH vs OGH comparison
-
-fig5_ogh_algorithm.png — algorithm flowchart
-
-fig6_vad_results.png — VAD results interpretation
-
-fig7_ogh_different_sizes.png — handling different lengths
-
-fig8_ogh_size_effect.png — size effect analysis
-
-fig9_monotonic_alignment.png — monotonic alignment visualization
-
-fig10_vad_length_effect.png — VAD length distribution
-
-### 5. Publication-Ready Figures
-
-Generate the three final figures used in the article:
-
-```bash
-python generate_figures.py
-
-📈 Reproducing Paper Results
-Table 2 (Sensitivity to shuffling)
-python
-from src.ogh_VAD_clean import OrderedGromovHausdorff
-import numpy as np
-
-ogh = OrderedGromovHausdorff(order_weight=0.5)
-# Run test on 1E0J, 1F5K, 2H2C with shuffling levels 0%, 30%, 50%, 70%, 100%
-Table 3 (Basic statistics)
-Run ogh_VAD_clean.py — statistics printed to console
-
-Table 4 (Correlations with TM-score)
-Results from ogh_VAD_advanced.py — pearsonr/spearmanr calculations
-
-Table 6 (α sensitivity)
-Results from alpha_sensitivity.csv generated by ogh_VAD_advanced.py
-
-Table 7 (Comparison with ordered methods)
-Results from ordered_methods_comparison.csv
+# Step 10: Optimize combined model (optional, validates simple average)
+python src/optimize_combined_model.py
+📋 Pipeline Overview
+Step	Script	Input	Output	Description
+1	parse_homologs.py	Supplementary Material S1.pdf	homologs_database.csv	Extract sequences and SCOP annotations from PDF
+2	clean_database.py	homologs_database.csv	homologs_database_clean.csv	Clean, remove duplicates, validate sequences
+3	homology_validation_real_ogh_v2_eng.p.py	homologs_database_clean.csv + PDB	homology_real_ogh_results.csv, zone_auc_results.csv	MAIN: Build 1,400 pairs, compute OGH/TM-score, calculate AUC, generate ROC plots
+4	parameter_sensitivity_analysis_new.py	homology_real_ogh_results.csv + PDB	sensitivity_analysis.csv	Test w ∈ [10,25], γ ∈ [1.0,3.0], α ∈ [0.0,1.0]
+5	generate_figures_v2.py (shuffling)	homologs_database_clean.csv + PDB	shuffling_results.csv, fig1_ogh_shuffling.png	Shuffling test: 5 proteins, 0–100% shuffling
+6	compute_all_metrics_scop.py	homology_real_ogh_results.csv	scop_all_metrics.csv, table2_scop.csv, table3_scop.csv	All metrics: OGH, GH, RMSD, Seq-RMSD; correlations with TM-score
+7	generate_final_tables.py	homology_real_ogh_results.csv, zone_auc_results.csv, sensitivity_analysis.csv	Tables 3–5 + Supplementary Table S3	Compile final tables in CSV and LaTeX
+8	generate_figures_v2.py	homology_real_ogh_results.csv, shuffling_results.csv	All figures	Generate all publication figures
+9	generate_supplementary_table_s2.py	homology_real_ogh_results.csv	supplementary_table_s2.csv	Complete list of 1,400 pairs
+10	homology_validation_length_ratio.py	homologs_database_clean.csv	supplementary_table_s4_length_ratio.csv	Length-ratio analysis (Table 7)
+11	optimize_combined_model.py	homology_real_ogh_results.csv	combined_optimization_results.csv, combined_optimization_plot.png	Compare Simple Average vs Weighted Sum vs Logistic Regression
+📈 Expected Results
+Table 3 — AUC values for homology detection across TM-score zones
+TM-score zone	N	OGH	TM-score	Combined	Improvement
+Diverse (TM ≤ 0.3)	1057	0.587	0.397	0.481	+0.190
+Twilight (0.3 < TM ≤ 0.5)	145	0.541	0.689	0.695	-0.148
+Homologous (TM > 0.5)	198	0.696	0.988	0.924	-0.292
+Overall	1400	0.665	0.653	0.731	+0.012
+Table 7 — AUC values by length-ratio bin
+Length ratio	N	OGH	TM-score	Combined	Advantage (OGH - TM)
+1.0–1.2	600	0.703	0.751	0.783	-0.048
+1.2–1.5	600	0.453	0.416	0.433	+0.037
+1.5–2.0	200	0.668	0.499	0.715	+0.169
+2.0–2.5	144	0.738	0.674	0.785	+0.064
+2.5–10.0	226	0.677	0.369	0.638	+0.308
+Combined Model Optimization
+Method	AUC (Test)	Accuracy	F1-score
+Simple Average (baseline)	0.773	0.682	0.544
+Weighted Sum (w=0.58)	0.773	0.718	0.618
+Logistic Regression	0.762	0.754	0.718
+Conclusion: Simple average is nearly optimal (within 0.04% of weighted sum) and was adopted as the final combined predictor.
 
 🔧 Configuration Parameters
 Parameter	Description	Recommended	Range
-order_weight (α)	Balance between geometry and order	0.5	0-1
-window	Search window for greedy alignment	15	5-30
-gap_penalty	Penalty for skipped residues	2.0	1-10
+α (order_weight)	Balance between geometry and order	0.5	0–1
+w (window)	Search window for greedy alignment	15	10–25
+γ (gap_penalty)	Penalty for skipped residues	2.0	1.0–3.0
+σ (sigma)	Order penalty steepness	3.0	—
 use_normalization	Normalize coordinates	True	Boolean
-max_length_ratio	Max length ratio for comparison	2.0	1.5-3.0
-📊 Expected Results
-After running ogh_VAD_clean.py, you should see:
-
-
-TEST: SENSITIVITY TO ORDER
-1E0J (500 residues):
-   0% shuffled: OGH=0.000000, GH=0.000000
-  30% shuffled: OGH=0.003816, GH=0.000000
-  50% shuffled: OGH=0.006704, GH=0.000000
-  70% shuffled: OGH=0.009990, GH=0.000000
- 100% shuffled: OGH=0.017520, GH=0.000000
-
-CORRELATIONS WITH TM-SCORE:
-OGH               vs TM_score: r= 0.438
-GH KS             vs TM_score: r= 0.416
-GH Histogram      vs TM_score: r= 0.168
 📝 Citation
 If you use this code in your research, please cite:
 
 bibtex
-@article{Timofeev2024OGH,
-  title={Ordered Gromov-Hausdorff Metric for Comparative Analysis of Viral Protein Structures from VAD Dataset},
+@article{Timofeev2026OGH,
+  title={Ordered Gromov--Hausdorff Metric: A Complementary Tool for Protein Homology Detection},
   author={Timofeev, A.V. and Anufriev, A.S.},
-  journal={AI Center for SCO+ Countries},
-  year={2024}
+  journal={Journal of Bioinformatics and Computational Biology},
+  year={2026},
+  note={In revision}
 }
-🤝 Contributing
-Contributions are welcome! Please:
-
-Fork the repository
-
-Create a feature branch
-
-Submit a Pull Request
-
 📧 Contact
-Timofeev A.V. - timofeev@ai-center.ru
-
-Anufriev A.S. - anufriev@ai-center.ru
+Corresponding author: Andrey V. Timofeev
+Email: tav@centeraisco.com
 
 📄 License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 🙏 Acknowledgments
-VAD (Viral Affinity Dataset) contributors
+SCOP/ASTRAL database for providing structural classifications
 
-RCSB Protein Data Bank
+RCSB Protein Data Bank for providing 3D structures
 
-Biopython, NumPy, SciPy, pandas communities
+Biopython, NumPy, SciPy, pandas, scikit-learn communities
 
-Keywords: Gromov-Hausdorff metric, ordered metric, protein structure comparison, RIN, VAD, TM-score, viral proteins, evolutionary bioinformatics
-
+Keywords: Gromov-Hausdorff metric, ordered metric, protein structure comparison, homology detection, TM-score, remote homology, SCOP/ASTRAL
