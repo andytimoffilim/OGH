@@ -49,7 +49,8 @@ ogh-reproducibility/
 │ ├── generate_final_tables.py # Compile final tables
 │ ├── generate_supplementary_table_s2.py # Supplementary Table S2
 │ ├── homology_validation_length_ratio.py # Length-ratio analysis (Table 7)
-│ └── optimize_combined_model.py # Optimize OGH + TM-score combination
+│ ├── optimize_combined_model.py # Optimize OGH + TM-score combination
+│ └── test_circular_permutation.py # Circular permutation sensitivity test
 │
 ├── results/ # Output (generated)
 │ ├── homology_real_ogh_results.csv
@@ -58,7 +59,8 @@ ogh-reproducibility/
 │ ├── shuffling_results.csv
 │ ├── table2_scop.csv
 │ ├── table3_scop.csv
-│ └── combined_optimization_results.csv
+│ ├── combined_optimization_results.csv
+│ └── circular_permutation_results.csv
 │
 ├── tables/ # Final tables for manuscript
 │ ├── table_3_stratified_auc.csv
@@ -71,7 +73,8 @@ ogh-reproducibility/
 │ ├── fig1_ogh_shuffling.png
 │ ├── fig2_ogh_concept.png
 │ ├── fig3_ogh_vs_tm_scatter.png
-│ └── combined_optimization_plot.png
+│ ├── combined_optimization_plot.png
+│ └── circular_permutation_plot.png
 │
 ├── LICENSE
 ├── README.md
@@ -160,6 +163,9 @@ python src/homology_validation_length_ratio.py
 
 # Step 10: Optimize combined model (optional, validates simple average)
 python src/optimize_combined_model.py
+
+# Step 11: Circular permutation test (optional, proof-of-concept)
+python src/test_circular_permutation.py
 📋 Pipeline Overview
 Step	Script	Input	Output	Description
 1	parse_homologs.py	Supplementary Material S1.pdf	homologs_database.csv	Extract sequences and SCOP annotations from PDF
@@ -173,6 +179,7 @@ Step	Script	Input	Output	Description
 9	generate_supplementary_table_s2.py	homology_real_ogh_results.csv	supplementary_table_s2.csv	Complete list of 1,400 pairs
 10	homology_validation_length_ratio.py	homologs_database_clean.csv	supplementary_table_s4_length_ratio.csv	Length-ratio analysis (Table 7)
 11	optimize_combined_model.py	homology_real_ogh_results.csv	combined_optimization_results.csv, combined_optimization_plot.png	Compare Simple Average vs Weighted Sum vs Logistic Regression
+12	test_circular_permutation.py	homologs_database_clean.csv + PDB	circular_permutation_results.csv, circular_permutation_plot.png	Circular permutation test: Proof-of-concept sensitivity to order rearrangements
 📈 Expected Results
 Table 3 — AUC values for homology detection across TM-score zones
 TM-score zone	N	OGH	TM-score	Combined	Improvement
@@ -187,6 +194,22 @@ Length ratio	N	OGH	TM-score	Combined	Advantage (OGH - TM)
 1.5–2.0	200	0.668	0.499	0.715	+0.169
 2.0–2.5	144	0.738	0.674	0.785	+0.064
 2.5–10.0	226	0.677	0.369	0.638	+0.308
+Circular Permutation Test
+The test_circular_permutation.py script demonstrates OGH sensitivity to order rearrangements:
+
+Cut position	OGH
+0.0	0.0000
+0.1	0.6366
+0.2	0.6575
+0.3	0.6693
+0.4	0.6711
+0.5	0.6239
+0.6	0.6684
+0.7	0.6793
+0.8	0.6586
+0.9	0.6359
+Conclusion: OGH increases from 0.000 (cut = 0) to a maximum of 0.679 (cut = 0.7), confirming sensitivity to circular permutations.
+
 Combined Model Optimization
 Method	AUC (Test)	Accuracy	F1-score
 Simple Average (baseline)	0.773	0.682	0.544
@@ -215,15 +238,3 @@ bibtex
 📧 Contact
 Corresponding author: Andrey V. Timofeev
 Email: tav@centeraisco.com
-
-📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-🙏 Acknowledgments
-SCOP/ASTRAL database for providing structural classifications
-
-RCSB Protein Data Bank for providing 3D structures
-
-Biopython, NumPy, SciPy, pandas, scikit-learn communities
-
-Keywords: Gromov-Hausdorff metric, ordered metric, protein structure comparison, homology detection, TM-score, remote homology, SCOP/ASTRAL
