@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-test_circular_permutation.py — Минимальный тест OGH на circular permutation
+test_circular_permutation.py — Minimal OGH test on circular permutation
 
-Идея:
-    Берём белок, делаем циклические перестановки (разрезаем в разных местах),
-    считаем OGH между оригиналом и перестановкой.
+Idea:
+    Take a protein, generate circular permutations (cut at different positions),
+    compute OGH between the original and each permuted structure.
 
-    Если OGH растёт с "серьёзностью" перестановки — OGH чувствителен к порядку.
+    If OGH increases with the "severity" of the permutation — OGH is order-sensitive.
 
 Usage:
     python test_circular_permutation.py
@@ -28,7 +28,7 @@ warnings.filterwarnings('ignore')
 
 
 # ============================================================================
-# 1. ЗАГРУЗКА PDB
+# 1. PDB LOADING
 # ============================================================================
 
 def download_pdb(pdb_id, output_dir='pdb_scop'):
@@ -55,7 +55,7 @@ def download_pdb(pdb_id, output_dir='pdb_scop'):
 
 
 def load_ca_coords(pdb_file):
-    """Загружает Cα координаты из PDB."""
+    """Load Cα coordinates from PDB."""
     parser = PDBParser(QUIET=True)
     structure = parser.get_structure('protein', pdb_file)
     coords = []
@@ -68,7 +68,7 @@ def load_ca_coords(pdb_file):
 
 
 # ============================================================================
-# 2. OGH (УПРОЩЁННЫЙ, НО ТОТ ЖЕ АЛГОРИТМ)
+# 2. OGH (SIMPLIFIED, BUT SAME ALGORITHM)
 # ============================================================================
 
 class OGH:
@@ -81,34 +81,34 @@ class OGH:
         n, m = len(X), len(Y)
         L = min(n, m)
 
-        # Нормализация
+        # Normalization
         X = (X - np.mean(X, axis=0)) / (np.std(X, axis=0) + 1e-8)
         Y = (Y - np.mean(Y, axis=0)) / (np.std(Y, axis=0) + 1e-8)
 
-        # Контактные карты
+        # Contact maps
         DX = cdist(X, X)
         DY = cdist(Y, Y)
         DX = DX[:, :L]
         DY = DY[:, :L]
 
-        # Геометрическая стоимость (сравнение строк контактных карт)
+        # Geometric cost (compare rows of contact maps)
         d_geom = cdist(DX, DY, metric='euclidean')
 
-        # Штраф за порядок
+        # Order penalty
         order_penalty = np.zeros((n, m))
         for i in range(n):
             for j in range(m):
                 pos_diff = abs(i / n - j / m)
                 order_penalty[i, j] = 20 * (1 - np.exp(-3 * pos_diff))
 
-        # Выравнивание (greedy)
+        # Alignment (greedy)
         cost = d_geom + order_penalty
         alignment = self._greedy_alignment(cost)
 
         if len(alignment) == 0:
             return np.inf
 
-        # Финальный скор
+        # Final score
         matched_geom = [d_geom[i, j] for i, j in alignment]
         matched_order = [order_penalty[i, j] for i, j in alignment]
 
@@ -145,14 +145,14 @@ class OGH:
 
 
 # ============================================================================
-# 3. ГЕНЕРАЦИЯ CIRCULAR PERMUTATIONS
+# 3. GENERATE CIRCULAR PERMUTATIONS
 # ============================================================================
 
 def circular_permute(coords, cut_position):
     """
-    Делает циклическую перестановку координат.
+    Generate a circular permutation of coordinates.
 
-    cut_position: от 0 до 1 (доля от длины белка)
+    cut_position: fraction of chain length (0 to 1)
     """
     n = len(coords)
     cut = int(n * cut_position)
@@ -162,7 +162,7 @@ def circular_permute(coords, cut_position):
 
 
 # ============================================================================
-# 4. ТЕСТ
+# 4. TEST
 # ============================================================================
 
 def main():
@@ -170,25 +170,25 @@ def main():
     print("🧬 CIRCULAR PERMUTATION TEST: OGH sensitivity")
     print("=" * 80)
 
-    # Выбираем белок из SCOP/ASTRAL
-    pdb_id = "d1faki_"  # 55 residues (можно заменить на любой)
-    print(f"\nБелок: {pdb_id}")
+    # Select a protein from SCOP/ASTRAL
+    pdb_id = "d1faki_"  # 55 residues (can be replaced)
+    print(f"\nProtein: {pdb_id}")
 
-    # Загружаем координаты
+    # Load coordinates
     pdb_file = download_pdb(pdb_id, 'pdb_scop')
     if pdb_file is None:
-        print("❌ Не удалось скачать PDB!")
+        print("❌ Failed to download PDB!")
         return
 
     coords = load_ca_coords(pdb_file)
     if coords is None or len(coords) < 20:
-        print(f"❌ Белок слишком мал или не загружен ({len(coords) if coords is not None else 0} residues)")
+        print(f"❌ Protein too small or not loaded ({len(coords) if coords is not None else 0} residues)")
         return
 
     n = len(coords)
-    print(f"  Длина: {n} residues")
+    print(f"  Length: {n} residues")
 
-    # Тестируем разные cut positions
+    # Test different cut positions
     cuts = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     ogh = OGH(alpha=0.5)
 
@@ -201,9 +201,9 @@ def main():
 
     df = pd.DataFrame(results)
     df.to_csv('circular_permutation_results.csv', index=False)
-    print("\n✅ Сохранено: circular_permutation_results.csv")
+    print("\n✅ Saved: circular_permutation_results.csv")
 
-    # График
+    # Plot
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.plot(df['cut'], df['OGH'], 'bo-', linewidth=2, markersize=8)
     ax.set_xlabel('Cut position (fraction of chain)')
@@ -211,7 +211,7 @@ def main():
     ax.set_title(f'OGH sensitivity to circular permutation\n({pdb_id}, {n} residues)')
     ax.grid(True, alpha=0.3)
 
-    # Аннотация
+    # Annotate maximum
     max_row = df.loc[df['OGH'].idxmax()]
     ax.annotate(f"Max OGH = {max_row['OGH']:.4f}\nat cut={max_row['cut']:.1f}",
                 xy=(max_row['cut'], max_row['OGH']),
@@ -222,26 +222,26 @@ def main():
     plt.tight_layout()
     plt.savefig('circular_permutation_plot.png', dpi=300, bbox_inches='tight')
     plt.show()
-    print("✅ Сохранено: circular_permutation_plot.png")
+    print("✅ Saved: circular_permutation_plot.png")
 
-    # Вывод
+    # Summary
     print("\n" + "=" * 80)
-    print("📊 РЕЗУЛЬТАТЫ")
+    print("📊 RESULTS")
     print("=" * 80)
 
     min_ogh = df.loc[df['cut'] == 0.0, 'OGH'].values[0]
     max_ogh = df['OGH'].max()
     print(f"  OGH (original):  {min_ogh:.4f}")
     print(f"  OGH (max):       {max_ogh:.4f}")
-    print(f"  Увеличение:      {max_ogh - min_ogh:+.4f}")
+    print(f"  Increase:        {max_ogh - min_ogh:+.4f}")
 
     if max_ogh > min_ogh * 1.5:
-        print("\n  ✅ OGH显著 увеличивается при circular permutation")
-        print("     → Метод чувствителен к изменению порядка")
+        print("\n  ✅ OGH significantly increases upon circular permutation")
+        print("     → The method is sensitive to order changes")
     else:
-        print("\n  ⚠️ Увеличение небольшое, но OGH всё равно реагирует")
+        print("\n  ⚠️ Increase is modest, but OGH still responds")
 
-    print("\n✅ Тест завершён!")
+    print("\n✅ Test complete!")
 
 
 if __name__ == "__main__":
