@@ -31,6 +31,24 @@ Traditional metrics like RMSD and TM-score ignore the linear order of residues a
 | **TM-score AUC (Length ratio > 2.5)** | 0.369 |
 | **Improvement for length ratio > 2.5** | **+0.308** |
 
+### What's new (saturation-constant analysis)
+
+The saturation constant `C = 20` in the order penalty
+`w_ord(i,j) = C * (1 - exp(-sigma * |i/n - j/m|))` is empirical. Two new
+scripts quantify its role:
+
+| Script | What it does |
+|--------|--------------|
+| `sensitivity_saturation_constant.py` | AUC and correlation with TM-score as a function of `C` (C ∈ {2, 5, 10, 15, 20, 30, 40, 50, 100}). |
+| `order_sensitivity_vs_C.py` | Order sensitivity (shuffling, circular permutation) and relative contribution of the order term as a function of `C` (C ∈ {2, 5, 10, 20, 50}). |
+
+**Key finding.** Smaller `C` improves AUC only by suppressing the order
+term: at `C = 2` the order component contributes 5.6% of the final score
+(vs 34.2% at `C = 20`), and OGH sensitivity to residue shuffling drops by
+16%. Optimising `C` against AUC alone therefore degenerates OGH toward a
+purely geometric metric. `C = 20` is retained as the value at which the
+order term remains functionally significant while AUC stays competitive.
+
 ---
 
 ## 📁 Repository Structure
@@ -44,6 +62,8 @@ ogh-reproducibility/
 │ ├── clean_database.py # Clean and curate the homologs database
 │ ├── homology_validation_real_ogh_v2_eng.p.py # MAIN: ROC/AUC validation (1,400 pairs)
 │ ├── parameter_sensitivity_analysis_new.py # Sensitivity: w, γ, α
+│ ├── sensitivity_saturation_constant.py # NEW: sensitivity to C (AUC/correlation)
+│ ├── order_sensitivity_vs_C.py # NEW: order sensitivity vs C
 │ ├── compute_all_metrics_scop.py # ALL metrics for Tables 2 & 3
 │ ├── generate_figures_v2.py # Generate all figures
 │ ├── generate_final_tables.py # Compile final tables
@@ -56,6 +76,13 @@ ogh-reproducibility/
 │ ├── homology_real_ogh_results.csv
 │ ├── zone_auc_results.csv
 │ ├── sensitivity_analysis.csv
+│ ├── sensitivity_saturation_constant.csv # NEW
+│ ├── sensitivity_saturation_constant.png # NEW
+│ ├── order_sensitivity_vs_C.csv # NEW
+│ ├── order_sensitivity_shuffling_vs_C.csv # NEW
+│ ├── order_sensitivity_circular_vs_C.csv # NEW
+│ ├── order_sensitivity_frac_vs_C.csv # NEW
+│ ├── order_sensitivity_vs_C.png # NEW
 │ ├── shuffling_results.csv
 │ ├── table2_scop.csv
 │ ├── table3_scop.csv
@@ -67,12 +94,14 @@ ogh-reproducibility/
 │ ├── table_4_alpha_optimization.csv
 │ ├── table_5_alpha_validation.csv
 │ ├── supplementary_table_s3_*.csv
+│ ├── supplementary_table_s3b_saturation_constant.csv # NEW
 │ └── all_tables.tex
 │
 ├── figures/ # Publication figures
 │ ├── fig1_ogh_shuffling.png
 │ ├── fig2_ogh_concept.png
 │ ├── fig3_ogh_vs_tm_scatter.png
+│ ├── figC_order_sensitivity_vs_C.png # NEW
 │ ├── combined_optimization_plot.png
 │ └── circular_permutation_plot.png
 │
@@ -140,8 +169,14 @@ python src/clean_database.py
 # Step 2: Main validation (LONGEST STEP — downloads PDB files, computes OGH for 1,400 pairs)
 python src/homology_validation_real_ogh_v2_eng.p.py
 
-# Step 3: Parameter sensitivity analysis
+# Step 3: Parameter sensitivity analysis (w, γ, α)
 python src/parameter_sensitivity_analysis_new.py
+
+# Step 3b: Saturation-constant sensitivity (AUC / correlation)
+python src/sensitivity_saturation_constant.py
+
+# Step 3c: Saturation-constant sensitivity (order sensitivity, fraction of order term)
+python src/order_sensitivity_vs_C.py
 
 # Step 4: Shuffling test (Table 1, Figure 1)
 python src/generate_figures_v2.py
@@ -166,11 +201,22 @@ python src/optimize_combined_model.py
 
 # Step 11: Circular permutation test (optional, proof-of-concept)
 python src/test_circular_permutation.py
-📋 Pipeline Overview
+Note on working directory. sensitivity_saturation_constant.py and
+order_sensitivity_vs_C.py read homology_real_ogh_results.csv and
+homology_coords.pkl from the current working directory. Run them from
+the folder where these files live (typically data/ or src/):
+
+bash
+cd data
+python ../src/sensitivity_saturation_constant.py
+python ../src/order_sensitivity_vs_C.py
+Pipeline Overview
 Step	Script	Input	Output	Description
 1	parse_homologs.py	Supplementary Material S1.pdf	homologs_database.csv	Extract sequences and SCOP annotations from PDF
 2	clean_database.py	homologs_database.csv	homologs_database_clean.csv	Clean, remove duplicates, validate sequences
 3	homology_validation_real_ogh_v2_eng.p.py	homologs_database_clean.csv + PDB	homology_real_ogh_results.csv, zone_auc_results.csv	MAIN: Build 1,400 pairs, compute OGH/TM-score, calculate AUC, generate ROC plots
+3b	sensitivity_saturation_constant.py	homology_real_ogh_results.csv + homology_coords.pkl	sensitivity_saturation_constant.csv/.png	AUC and correlation with TM-score across C
+3c	order_sensitivity_vs_C.py	homology_real_ogh_results.csv + PDB	order_sensitivity_*.csv, order_sensitivity_vs_C.png	Shuffling/circular permutation and order-term fraction across C
 4	parameter_sensitivity_analysis_new.py	homology_real_ogh_results.csv + PDB	sensitivity_analysis.csv	Test w ∈ [10,25], γ ∈ [1.0,3.0], α ∈ [0.0,1.0]
 5	generate_figures_v2.py (shuffling)	homologs_database_clean.csv + PDB	shuffling_results.csv, fig1_ogh_shuffling.png	Shuffling test: 5 proteins, 0–100% shuffling
 6	compute_all_metrics_scop.py	homology_real_ogh_results.csv	scop_all_metrics.csv, table2_scop.csv, table3_scop.csv	All metrics: OGH, GH, RMSD, Seq-RMSD; correlations with TM-score
@@ -194,6 +240,32 @@ Length ratio	N	OGH	TM-score	Combined	Advantage (OGH - TM)
 1.5–2.0	200	0.668	0.499	0.715	+0.169
 2.0–2.5	144	0.738	0.674	0.785	+0.064
 2.5–10.0	226	0.677	0.369	0.638	+0.308
+Saturation-constant sensitivity (NEW)
+AUC and correlation with TM-score vs C:
+
+C	AUC (overall)	Pearson r	Spearman ρ
+2	0.721	-0.744	-0.511
+5	0.710	-0.705	-0.458
+10	0.694	-0.638	-0.389
+15	0.678	-0.578	-0.337
+20	0.665	-0.529	-0.302
+30	0.647	-0.459	-0.250
+40	0.632	-0.408	-0.210
+50	0.623	-0.373	-0.188
+100	0.598	-0.270	-0.145
+Order sensitivity and order-term fraction vs C:
+
+C	OGH at 100% shuffling	OGH at circular perm. (cut=0.7)	frac_order (mean)	frac_order (median)
+2	0.619	0.653	0.056	0.055
+5	0.641	0.656	0.126	0.127
+10	0.677	0.660	0.217	0.225
+20	0.738	0.673	0.342	0.368
+50	0.896	0.686	0.525	0.590
+Interpretation. Smaller C increases AUC only by suppressing the order
+term. At C = 2, OGH is 94% geometric and loses the order sensitivity
+that defines it. C = 20 is the value at which the order term remains
+functionally significant (≈34% of the score) while AUC stays competitive.
+
 Circular Permutation Test
 The test_circular_permutation.py script demonstrates OGH sensitivity to order rearrangements:
 
@@ -223,7 +295,14 @@ Parameter	Description	Recommended	Range
 w (window)	Search window for greedy alignment	15	10–25
 γ (gap_penalty)	Penalty for skipped residues	2.0	1.0–3.0
 σ (sigma)	Order penalty steepness	3.0	—
+C (saturation constant)	Upper bound of the order penalty	20	not tuned against AUC; see order_sensitivity_vs_C.py
 use_normalization	Normalize coordinates	True	Boolean
+Note on C. Unlike w and γ, C should not be tuned
+against AUC: smaller C improves AUC only by suppressing the order term
+and degenerating OGH toward a purely geometric score. The value C = 20
+keeps the order term at ≈34% of the final score while AUC stays above
+the TM-score baseline.
+
 📝 Citation
 If you use this code in your research, please cite:
 
